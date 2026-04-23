@@ -1,0 +1,437 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>Kundenaquise Thomas Kohl</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            position: relative;
+        }
+
+        h1 {
+            color: #f2b400;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        td[contenteditable="true"]:focus {
+            outline: 2px solid #f2b400;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        tr.zeile-gruen {
+            background-color: #d4edda;
+        }
+
+        tr.zeile-gelb {
+            background-color: #fff3cd;
+        }
+
+        tr.zeile-rot {
+            background-color: #f8d7da;
+        }
+
+        .logo-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+        }
+
+            .logo-container img {
+                height: 50px;
+            }
+
+        .filterleiste {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin: 15px 0 25px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+            .filterleiste .checkboxen label {
+                margin-right: 10px;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .filterleiste input[type="text"] {
+                padding: 5px;
+                width: 220px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+
+        /* Notiz-Modal */
+        #notizModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #modalOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+        #notizModal textarea,
+        #notizModal input[type="date"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .notiz-eintrag {
+            border-top: 1px solid #ddd;
+            padding: 5px 0;
+        }
+
+            .notiz-eintrag small {
+                color: gray;
+            }
+
+        .notizen-liste {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+
+        #notizModal button {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-container">
+        <img src="https://www.thomaskohl-gruppe.de/media/yootheme/cache/82/82e113fb.webp" alt="Yellow Time Logo" />
+        
+    </div>
+
+    <h1>Kundenaquise Thomas Kohl</h1>
+
+    <!-- Filterleiste -->
+    <div class="filterleiste">
+        <div class="checkboxen">
+            <label><input type="checkbox" class="filter-check" value="gruen" checked onchange="filtereTabelle()"> nur Grüne</label>
+            <label><input type="checkbox" class="filter-check" value="gelb" checked onchange="filtereTabelle()"> nur Gelbe</label>
+            <label><input type="checkbox" class="filter-check" value="rot" checked onchange="filtereTabelle()"> nur Rote</label>
+        </div>
+        <input type="text" id="suchfeld" placeholder="Suchen..." oninput="filtereTabelle()" autocomplete="off" />
+    </div>
+
+    <!-- Tabelle -->
+    <table id="kundenTabelle">
+        <thead>
+            <tr>
+                <th>lfd. Nummer</th>
+                <th>Unternehmen</th>
+                <th>Kontaktperson</th>
+                <th>E-Mail</th>
+                <th>Telefonnummer</th>
+                <th>Handynummer</th>
+                <th>war bereits Kunde</th>
+                <th>bereits Termin vereinbart</th>
+                <th>bereits telefoniert</th>
+                <th>interessiert</th>
+                <th>Auftrag erteilt</th>
+                <th>Bemerkungen</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dynamisch -->
+        </tbody>
+    </table>
+
+    <!-- Notiz-Modal -->
+    <div id="notizModal">
+        <h3>Gesprächsnotizen</h3>
+        <label>Datum:</label>
+        <input type="date" id="notizDatum" />
+        <label>Notiz:</label>
+        <textarea id="notizText" rows="3"></textarea>
+        <div style="text-align: right;">
+            <button onclick="schliesseNotizModal()">Abbrechen</button>
+            <button onclick="speichereNotiz()">Hinzufügen</button>
+        </div>
+        <div class="notizen-liste" id="notizenListe"></div>
+    </div>
+    <div id="modalOverlay" onclick="schliesseNotizModal()"></div>
+
+    <script>
+        const spaltenAnzahl = 12;
+        const speicherKey = "yellowTimeKundenDaten";
+        const notizSpeicherKey = "yellowTimeNotizen";
+        const checkboxSpalten = [6, 7, 8, 9, 10];
+        let aktuellerKundenIndex = null;
+
+        function ladeDaten() {
+            const daten = JSON.parse(localStorage.getItem(speicherKey)) || [[]];
+            const tbody = document.querySelector("#kundenTabelle tbody");
+            tbody.innerHTML = "";
+
+            daten.forEach((zeileDaten, zeilenIndex) => {
+                const tr = document.createElement("tr");
+
+                for (let i = 0; i < spaltenAnzahl; i++) {
+                    const td = document.createElement("td");
+
+                    if (i === 0) {
+                        td.textContent = zeilenIndex + 1;
+                        td.contentEditable = "false";
+                    } else if (checkboxSpalten.includes(i)) {
+                        const checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        checkbox.checked = zeileDaten[i] === "true";
+                        checkbox.addEventListener("change", () => {
+                            speichereDaten();
+                            aktualisiereZeilenfarbe(tr);
+                            pruefeUndErstelleNeueZeile(tr);
+                            filtereTabelle();
+                        });
+                        td.appendChild(checkbox);
+                    } else {
+                        td.contentEditable = "true";
+                        td.textContent = zeileDaten[i] || "";
+
+                        if (i === 1) {
+                            td.style.cursor = "pointer";
+                            // Modal nur bei Doppelklick öffnen
+                            td.addEventListener("dblclick", () => oeffneNotizModal(zeilenIndex));
+                        }
+
+                        td.addEventListener("input", () => {
+                            speichereDaten();
+                            pruefeUndErstelleNeueZeile(tr);
+                            filtereTabelle();
+                        });
+                    }
+
+                    tr.appendChild(td);
+                }
+
+                aktualisiereZeilenfarbe(tr);
+                tbody.appendChild(tr);
+            });
+
+            filtereTabelle();
+        }
+
+        function speichereDaten(daten = null) {
+            const tbody = document.querySelector("#kundenTabelle tbody");
+            daten = daten || Array.from(tbody.rows).map(tr =>
+                Array.from(tr.cells).map((td, i) => {
+                    if (i === 0) return (parseInt(td.textContent) || "");
+                    if (checkboxSpalten.includes(i)) {
+                        const checkbox = td.querySelector("input[type='checkbox']");
+                        return checkbox && checkbox.checked ? "true" : "false";
+                    }
+                    return td.textContent.trim();
+                })
+            );
+            localStorage.setItem(speicherKey, JSON.stringify(daten));
+        }
+
+        function aktualisiereZeilenfarbe(tr) {
+            tr.classList.remove("zeile-gruen", "zeile-gelb", "zeile-rot");
+
+            const checkboxZellen = checkboxSpalten.map(i => tr.cells[i]);
+            const checkedCount = checkboxZellen.reduce((summe, zelle) => {
+                const checkbox = zelle.querySelector("input[type='checkbox']");
+                return summe + (checkbox && checkbox.checked ? 1 : 0);
+            }, 0);
+
+            if (checkedCount === checkboxSpalten.length) {
+                tr.classList.add("zeile-gruen");
+            } else if (checkedCount === 0) {
+                tr.classList.add("zeile-rot");
+            } else {
+                tr.classList.add("zeile-gelb");
+            }
+        }
+
+        function pruefeUndErstelleNeueZeile(tr) {
+            const tbody = document.querySelector("#kundenTabelle tbody");
+            const istLetzteZeile = tr === tbody.lastElementChild;
+            if (!istLetzteZeile) return;
+
+            // Prüfe, ob mindestens eine der relevanten Spalten (1-5) Inhalt hat
+            const datenZellen = Array.from(tr.cells).slice(1, 6);
+            const hatInhalt = datenZellen.some(td => td.textContent.trim() !== "");
+
+            if (!hatInhalt) return;
+
+            const daten = JSON.parse(localStorage.getItem(speicherKey)) || [];
+            daten.push([]);
+            speichereDaten(daten);
+            ladeDaten();
+        }
+
+        function filtereTabelle() {
+            const suchbegriff = document.getElementById("suchfeld").value.toLowerCase();
+            const zeilen = document.querySelectorAll("#kundenTabelle tbody tr");
+
+            // Welche Filter sind aktiviert?
+            const filterChecks = document.querySelectorAll(".filter-check");
+            const aktiveFilter = Array.from(filterChecks)
+                .filter(chk => chk.checked)
+                .map(chk => chk.value);
+
+            zeilen.forEach(tr => {
+                const istGruen = tr.classList.contains("zeile-gruen");
+                const istGelb = tr.classList.contains("zeile-gelb");
+                const istRot = tr.classList.contains("zeile-rot");
+
+                // Prüfen, ob Zeile in einem der aktivierten Filterfarben ist
+                let farbePasst =
+                    (istGruen && aktiveFilter.includes("gruen")) ||
+                    (istGelb && aktiveFilter.includes("gelb")) ||
+                    (istRot && aktiveFilter.includes("rot"));
+
+                // Falls keine Filter ausgewählt, zeigen wir alle
+                if (aktiveFilter.length === 0) {
+                    farbePasst = true;
+                }
+
+                const zellenText = Array.from(tr.cells)
+                    .map(td => td.textContent.toLowerCase())
+                    .join(" ");
+
+                const suchbegriffPasst = zellenText.includes(suchbegriff);
+
+                tr.style.display = (farbePasst && suchbegriffPasst) ? "" : "none";
+            });
+        }
+
+        // --- Gesprächsnotizen-Funktionen ---
+
+        function oeffneNotizModal(kundenIndex) {
+            aktuellerKundenIndex = kundenIndex;
+            document.getElementById("notizDatum").value = "";
+            document.getElementById("notizText").value = "";
+            ladeNotizen(kundenIndex);
+            zeigeModal(true);
+        }
+
+        function zeigeModal(sichtbar) {
+            document.getElementById("notizModal").style.display = sichtbar ? "block" : "none";
+            document.getElementById("modalOverlay").style.display = sichtbar ? "block" : "none";
+        }
+
+        function schliesseNotizModal() {
+            zeigeModal(false);
+            aktuellerKundenIndex = null;
+        }
+
+        function ladeNotizen(kundenIndex) {
+            const alleNotizen = JSON.parse(localStorage.getItem(notizSpeicherKey)) || {};
+            const notizen = alleNotizen[kundenIndex] || [];
+
+            const liste = document.getElementById("notizenListe");
+            liste.innerHTML = "";
+
+            if (notizen.length === 0) {
+                liste.innerHTML = "<p>Keine Gesprächsnotizen vorhanden.</p>";
+                return;
+            }
+
+            notizen.forEach(eintrag => {
+                const div = document.createElement("div");
+                div.className = "notiz-eintrag";
+                div.innerHTML = `<small>${eintrag.datum}</small><p>${eintrag.text.replace(/\n/g, "<br>")}</p>`;
+                liste.appendChild(div);
+            });
+        }
+
+        function speichereNotiz() {
+            const datumInput = document.getElementById("notizDatum").value;
+            const textInput = document.getElementById("notizText").value.trim();
+
+            if (!datumInput) {
+                alert("Bitte ein Datum auswählen.");
+                return;
+            }
+            if (!textInput) {
+                alert("Bitte eine Notiz eingeben.");
+                return;
+            }
+
+            const alleNotizen = JSON.parse(localStorage.getItem(notizSpeicherKey)) || {};
+            if (!alleNotizen[aktuellerKundenIndex]) {
+                alleNotizen[aktuellerKundenIndex] = [];
+            }
+
+            alleNotizen[aktuellerKundenIndex].push({
+                datum: datumInput,
+                text: textInput
+            });
+
+            localStorage.setItem(notizSpeicherKey, JSON.stringify(alleNotizen));
+            ladeNotizen(aktuellerKundenIndex);
+
+            // Felder leeren, Fokus auf Datum für schnelleres Hinzufügen
+            document.getElementById("notizDatum").value = "";
+            document.getElementById("notizText").value = "";
+            document.getElementById("notizDatum").focus();
+        }
+
+        // Initial laden
+        ladeDaten();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
