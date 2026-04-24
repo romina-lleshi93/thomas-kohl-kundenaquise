@@ -1,0 +1,134 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    position: relative;
+}
+
+h1 {
+    color: #f2b400;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+td[contenteditable="true"]:focus {
+    outline: 2px solid #f2b400;
+}
+
+input[type="checkbox"] {
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+tr.zeile-gruen {
+    background-color: #d4edda;
+}
+
+tr.zeile-gelb {
+    background-color: #fff3cd;
+}
+
+tr.zeile-rot {
+    background-color: #f8d7da;
+}
+
+.logo-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 20;
+}
+
+.logo-container img {
+    height: 50px;
+}
+
+.filterleiste {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 15px 0 25px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filterleiste .checkboxen label {
+    margin-right: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filterleiste input[type="text"] {
+    padding: 5px;
+    width: 220px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Notiz-Modal */
+#notizModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#modalOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+
+#notizModal textarea,
+#notizModal input[type="date"] {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.notiz-eintrag {
+    border-top: 1px solid #ddd;
+    padding: 5px 0;
+}
+
+.notiz-eintrag small {
+    color: gray;
+}
+
+.notizen-liste {
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #ccc;
+    padding-top: 5px;
+}
+
+#notizModal button {
+    margin-left: 10px;
+}
